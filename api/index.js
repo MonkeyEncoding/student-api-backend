@@ -4,7 +4,8 @@ const mongoose = require('mongoose');
 
 const RecordSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 100 },
-  content: { type: String, required: true, trim: true, maxlength: 1000 }
+  content: { type: String, required: true, trim: true, maxlength: 1000 },
+  status: { type: String, enum: ['present', 'absent', 'late'] }
 }, { timestamps: true });
 
 const Record = mongoose.models.Record || mongoose.model('Record', RecordSchema);
@@ -30,8 +31,8 @@ module.exports = async (req, res) => {
 
     // CREATE: POST /api
     if (req.method === 'POST') {
-      const { title, content } = req.body || {};
-      const newRecord = await Record.create({ title, content });
+      const { title, content, status } = req.body || {};
+      const newRecord = await Record.create({ title, content, status });
       return res.status(201).json(newRecord);
     }
 
@@ -43,10 +44,12 @@ module.exports = async (req, res) => {
 
     // UPDATE: PUT /api?id=...
     if (req.method === 'PUT') {
-      const { title, content } = req.body || {};
+      const { title, content, status } = req.body || {};
+      const update = { title, content };
+      if (status) update.status = status;
       const updated = await Record.findByIdAndUpdate(
         id,
-        { title, content },
+        update,
         { new: true, runValidators: true }
       );
       if (!updated) return res.status(404).json({ error: 'Record not found' });
@@ -64,7 +67,7 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error(error);
     if (error.name === 'ValidationError') {
-      return res.status(400).json({ error: 'Title and content are required' });
+      return res.status(400).json({ error: 'Check the title, content and attendance status, then try again' });
     }
     return res.status(500).json({ error: 'Database connection failed' });
   }
